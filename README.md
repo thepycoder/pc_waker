@@ -2,6 +2,8 @@
 
 Some code to turn a Raspberry Pi Zero W into an always-on companion that can launch my PC and also select which OS to boot into (by emulating a keyboard).
 
+![screenshot](images/screenshot.png)
+
 ## Getting Started
 
 These instructions will guide you though setting up a similar system for your own setup. I'm on the go quite often and would like to be able to take over my pc at all times. In most cases this is either ssh-ing in Linux for development, running mac and taking over for video editing or running windows and playing games from my laptop.
