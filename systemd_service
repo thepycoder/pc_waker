@@ -1,0 +1,11 @@
+[Unit]
+Description=Wake PC
+
+[Service]
+User=root
+WorkingDirectory=/home/pi/pc_waker
+ExecStart=gunicorn -w 1 -b 0.0.0.0 --timeout 360 'wake_pc_flask:app'
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,3 +1,4 @@
+import subprocess
 from flask import Flask, render_template, jsonify
 from wakeonlan import send_magic_packet
 import RPi.GPIO as GPIO
@@ -8,7 +9,12 @@ import os
 app = Flask(__name__)
 
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(23, GPIO.OUT)
+RELAY_PIN = 23
+SERVO_PIN = 18
+GPIO.setup(RELAY_PIN, GPIO.OUT)  # Relay
+GPIO.setup(SERVO_PIN, GPIO.OUT)  # Servo
+PWM = GPIO.PWM(SERVO_PIN, 50)  # PWM Frequency
+PWM.start(0)
 
 def wake_pc():
     GPIO.output(23, 1)
@@ -42,7 +48,15 @@ def launch_linux():
 
 @app.get("/mac")
 def launch_macos():
-    send_magic_packet("14:98:77:43:2b:97")
+    # Move servo arm to button
+    PWM.ChangeDutyCycle(angle_to_percent(25))
+    # Wait just a little
+    time.sleep(0.5)
+    # Reset the arm to its default position
+    PWM.ChangeDutyCycle(angle_to_percent(90))
+    # Wait just a little
+    time.sleep(0.5)
+    PWM.ChangeDutyCycle(0)
     return {"STATUS": "SUCCESS"}
 
 
@@ -62,13 +76,12 @@ def launch_windows():
 
 @app.route("/awake")
 def awake():
-    hostname = "192.168.0.208"  # Replace this with the IP address of the target computer
-    response = os.system("ping -c 1 " + hostname)
+    pc_hostname = "192.168.0.208"  # Replace this with the IP address of the target computer
+    mac_hostname = "192.168.0.171"
+    pc_result = subprocess.run(f"ping -c 1 {pc_hostname}".split(), stdout=subprocess.PIPE)
+    mac_result = subprocess.run(f"ping -c 1 {mac_hostname}".split(), stdout=subprocess.PIPE)
 
-    if response == 0:
-        return jsonify(True)
-    else:
-        return jsonify(False)
+    return jsonify({"PC": not(pc_result.returncode), "MAC": not(bool(mac_result.returncode))})
 
 
 NULL_CHAR = chr(0)
@@ -77,6 +90,19 @@ def press_key(char_nr):
         fd.write((NULL_CHAR*2+chr(char_nr)+NULL_CHAR*5).encode())
     with open("/dev/hidg0", "rb+") as fd:
         fd.write((NULL_CHAR*8).encode())
+
+# Set function to calculate percent from angle
+def angle_to_percent (angle) :
+    if angle > 180 or angle < 0 :
+        return False
+
+    start = 4
+    end = 12.5
+    ratio = (end - start)/180 # Calculate ratio from angle to percent
+
+    angle_as_percent = angle * ratio
+
+    return start + angle_as_percent
 
 
 def main():
